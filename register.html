@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h2 class="text-center text-primary">Voter Registration</h2>
+  <form id="registerForm" method="POST" action="{{ url_for('register') }}" enctype="multipart/form-data" onsubmit="return validateForm()">
+    <div class="mb-3">
+      <label class="form-label">Voter Name</label>
+      <input type="text" class="form-control" name="name" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Aadhar Number</label>
+      <input type="text" class="form-control" name="aadhar" required>
+    </div>
+
+    <div class="row">
+      <!-- Face Scan -->
+      <div class="col-md-6 text-center">
+        <h5>Face Scan</h5>
+        <video id="faceVideo" autoplay playsinline class="rounded shadow" width="100%"></video>
+        <canvas id="faceCanvas" class="d-none"></canvas>
+        <button type="button" class="btn btn-primary mt-2" onclick="captureFace()">Capture Face</button>
+        <input type="hidden" name="face_image" id="faceInput">
+      </div>
+
+      <!-- Iris Scan -->
+      <div class="col-md-6 text-center">
+        <h5>Iris Scan</h5>
+        <p class="text-muted">Align your eye roughly in the center of the video.</p>
+        <video id="irisVideo" autoplay playsinline class="rounded shadow" width="100%"></video>
+        <canvas id="irisCanvas" class="d-none"></canvas>
+        <canvas id="irisZoomCanvas" class="d-none"></canvas>
+        <button type="button" class="btn btn-success mt-2" onclick="captureIris()">Capture Iris</button>
+        <input type="hidden" name="iris_image" id="irisInput">
+      </div>
+    </div>
+
+    <div class="text-center mt-4">
+      <button id="registerBtn" type="submit" class="btn btn-lg btn-primary" disabled>Register</button>
+    </div>
+  </form>
+</div>
+
+<script>
+let faceCaptured = false;
+let irisCaptured = false;
+let sharedStream = null;
+
+// Request webcam once and share it
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => {
+    sharedStream = stream;
+    document.getElementById('faceVideo').srcObject = stream;
+    document.getElementById('irisVideo').srcObject = stream;
+  })
+  .catch(err => {
+    alert("❌ Could not access webcam: " + err.message);
+  });
+
+function captureFace() {
+  let video = document.getElementById('faceVideo');
+  let canvas = document.getElementById('faceCanvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  
+  let faceData = canvas.toDataURL('image/jpeg');
+  if (!faceData) {
+    alert("⚠️ Face capture failed, try again.");
+    return;
+  }
+
+  document.getElementById('faceInput').value = faceData;
+  faceCaptured = true;
+  alert("✅ Face Captured");
+  enableRegister();
+}
+
+function captureIris() {
+  let video = document.getElementById('irisVideo');
+  let canvas = document.getElementById('irisCanvas');
+  let zoomCanvas = document.getElementById('irisZoomCanvas');
+  let ctx = canvas.getContext('2d');
+  let zoomCtx = zoomCanvas.getContext('2d');
+
+  // Draw full frame
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+
+  // Center crop (zoom)
+  let cropSize = Math.min(canvas.width, canvas.height) / 3;
+  let cropX = (canvas.width - cropSize) / 2;
+  let cropY = (canvas.height - cropSize) / 2;
+
+  zoomCanvas.width = 200;
+  zoomCanvas.height = 200;
+  zoomCtx.drawImage(canvas, cropX, cropY, cropSize, cropSize, 0, 0, 200, 200);
+
+  let irisData = zoomCanvas.toDataURL('image/jpeg');
+  if (!irisData) {
+    alert("⚠️ Iris capture failed, try again.");
+    return;
+  }
+
+  document.getElementById('irisInput').value = irisData;
+  irisCaptured = true;
+  alert("✅ Iris Captured (Zoomed Center Crop)");
+  enableRegister();
+}
+
+function enableRegister() {
+  if (faceCaptured && irisCaptured) {
+    document.getElementById('registerBtn').disabled = false;
+  }
+}
+
+function validateForm() {
+  if (!faceCaptured || !irisCaptured) {
+    alert("⚠️ Please capture both face and iris before submitting.");
+    return false;
+  }
+  return true;
+}
+</script>
+
+{% endblock %}

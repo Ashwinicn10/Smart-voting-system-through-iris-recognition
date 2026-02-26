@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>BioVote - Secure & Smart Voting</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Assuming you have a static/css/style.css file -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- Custom fonts and styles -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;700&display=swap');
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            background-color: #f8f9fa;
+            font-family: 'Poppins', sans-serif;
+            overflow-x: hidden;
+        }
+        .navbar {
+            background: linear-gradient(90deg, #212529, #343a40);
+            padding: 0.8rem 1rem;
+        }
+        .navbar-brand {
+            font-weight: bold;
+            font-size: 1.4rem;
+            color: #fff !important;
+        }
+
+        /* Sidebar */
+        #sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 230px;
+            background: #212529;
+            color: #fff;
+            padding-top: 70px;
+            transform: translateX(-260px);
+            transition: transform 0.28s ease;
+            z-index: 1040;
+            box-shadow: 2px 0 12px rgba(0,0,0,0.15);
+        }
+        #sidebar.active { transform: translateX(0); }
+        #sidebar ul { list-style: none; padding: 0; margin: 0; }
+        #sidebar ul li { padding: 15px; border-bottom: 1px solid #343a40; }
+        #sidebar ul li a { color: #fff; text-decoration: none; display: block; font-weight: 500; }
+        #sidebar ul li a:hover { 
+            background: #0d6efd; 
+            color: #fff; 
+            border-radius: 4px;
+        }
+
+        /* Menu button */
+        #menu-btn {
+            position: fixed;
+            top: 12px;
+            left: 12px;
+            width: 44px;
+            height: 44px;
+            border-radius: 6px;
+            border: none;
+            background: #0d6efd;
+            color: #fff;
+            font-size: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1060;
+            cursor: pointer;
+            box-shadow: 0 4px 8px rgba(13,110,253,0.18);
+        }
+
+        /* Content */
+        #content {
+            transition: margin-left 0.28s ease;
+            padding: 20px;
+            margin-top: 70px;
+            flex: 1;
+            margin-left: 0;
+        }
+        #sidebar.active + #content { 
+            margin-left: 230px; 
+            /* Push content over on desktop */
+        }
+        
+        /* Flash message positioning */
+        .flash-message {
+            position: fixed;
+            top: 70px;
+            right: 20px;
+            z-index: 1080;
+            min-width: 250px;
+            max-width: 90%; /* Responsive max width */
+        }
+        .flash-message .alert {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+
+        /* Footer */
+        footer {
+            background-color: #212529;
+            color: #fff;
+            text-align: center;
+            padding: 12px;
+            font-size: 0.9rem;
+            width: 100%;
+            margin-top: auto;
+        }
+
+        @media (max-width: 576px) {
+            #sidebar { width: 260px; transform: translateX(-280px); }
+            /* Sidebar takes up full width on mobile, so content doesn't need margin adjustment */
+            #sidebar.active + #content { margin-left: 0; } 
+            #menu-btn { left: 10px; top: 10px; }
+            .navbar-brand { margin-left: 55px !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Menu Button -->
+    <button id="menu-btn" aria-label="Open menu">☰</button>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-dark fixed-top d-flex justify-content-between">
+        <div class="d-flex align-items-center ms-5">
+            <a class="navbar-brand" href="{{ url_for('home') }}">BioVote</a>
+        </div>
+    </nav>
+
+    <!-- Sidebar -->
+    <div id="sidebar" aria-hidden="true">
+        <ul>
+            <li><a href="{{ url_for('home') }}">🏠 Home</a></li>
+
+            {% if session.get('admin') %}
+                <li><a href="{{ url_for('admin_home') }}">📊 Dashboard</a></li>
+                <li><a href="{{ url_for('admin_voter_register') }}">🧑‍💼 Register Voter</a></li>
+                <li><a href="{{ url_for('candidate_register') }}">🗳️ Register Candidate</a></li>
+                <li><a href="{{ url_for('vote_results') }}">📈 Vote Results</a></li>
+                <li><a href="{{ url_for('manage_registration') }}">✅ Manage Registrations</a></li>
+                <hr style="border-top: 1px solid #495057;">
+                <li><a href="{{ url_for('logout') }}">🔒 Logout</a></li>
+            {% else %}
+                <li><a href="{{ url_for('admin_login') }}">🔑 Admin Login</a></li>
+                <li><a href="{{ url_for('voter_verification_page') }}">🗳️ Cast Vote</a></li>
+            {% endif %}
+        </ul>
+    </div>
+
+    <!-- Main Content -->
+    <div id="content" class="pt-5 mt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-message">
+                    {% for category, message in messages %}
+                        <!-- This block handles messages, including the new email success/warning from app.py -->
+                        <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </div>
+
+    <footer>
+        <p class="mb-0">
+            Contact: xyz | Email: xxxxxx@gmail.com | Phone: 797xxxxxxx
+        </p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function() {
+            const menuBtn = document.getElementById('menu-btn');
+            const sidebar = document.getElementById('sidebar');
+            const content = document.getElementById('content');
+
+            if (menuBtn && sidebar) {
+                function toggleSidebar() {
+                    const open = sidebar.classList.toggle('active');
+                    sidebar.setAttribute('aria-hidden', !open);
+                    // Add/remove overlay on mobile when sidebar is active
+                    if (window.innerWidth <= 576) {
+                        if (open) {
+                            content.style.pointerEvents = 'none';
+                            content.style.opacity = '0.5';
+                        } else {
+                            content.style.pointerEvents = 'auto';
+                            content.style.opacity = '1';
+                        }
+                    }
+                }
+
+                menuBtn.addEventListener('click', toggleSidebar);
+
+                document.addEventListener('click', (e) => {
+                    if (!sidebar.classList.contains('active')) return;
+                    // Close sidebar if click is outside and not on the menu button
+                    if (e.target !== menuBtn && !sidebar.contains(e.target)) {
+                        toggleSidebar();
+                    }
+                });
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container text-center mt-5">
+  <div class="card shadow-lg p-5 rounded-4 animated-card position-relative overflow-hidden">
+    <h2 class="mb-4 fw-bold text-primary">🔐 Iris Verification</h2>
+    <p class="lead text-muted">
+      Click the button below to begin secure iris scanning and verify your identity.
+    </p>
+    <a href="{{ url_for('verify') }}" 
+       class="btn btn-gradient btn-lg mt-4 px-5 py-3 fw-semibold shadow-sm">
+      👁️ Start Iris Scan
+    </a>
+
+    <!-- Floating particles -->
+    <div class="particles"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Animated gradient background */
+.animated-card {
+  background: linear-gradient(270deg, #e0f7fa, #f1f8ff, #e3f2fd, #f0fff4);
+  background-size: 600% 600%;
+  animation: gradientShift 12s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Gradient button */
+.btn-gradient {
+  background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+  border: none;
+  color: white !important;
+  transition: all 0.3s ease-in-out;
+}
+.btn-gradient:hover {
+  transform: scale(1.08);
+  background: linear-gradient(90deg, #00f2fe 0%, #4facfe 100%);
+  box-shadow: 0px 4px 15px rgba(0, 150, 255, 0.4);
+}
+
+/* Floating particles */
+.particles::before,
+.particles::after {
+  content: "✨";
+  position: absolute;
+  font-size: 20px;
+  color: rgba(0, 150, 255, 0.3);
+  animation: float 6s infinite ease-in-out;
+}
+.particles::after {
+  left: 70%;
+  top: 20%;
+  animation-delay: 2s;
+  color: rgba(0, 200, 150, 0.3);
+}
+
+@keyframes float {
+  0% { transform: translateY(0) rotate(0); opacity: 0.6; }
+  50% { transform: translateY(-20px) rotate(20deg); opacity: 1; }
+  100% { transform: translateY(0) rotate(0); opacity: 0.6; }
+}
+</style>
+{% endblock %}

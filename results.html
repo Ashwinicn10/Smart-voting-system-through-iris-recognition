@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container text-center">
+  <div class="card p-5">
+    <h2>{{ message }}</h2>
+    <a href="{{ url_for('home') }}" class="btn btn-custom mt-4">🏠 Back to Home</a>
+  </div>
+</div>
+<!-- Footer -->
+
+{% endblock %}

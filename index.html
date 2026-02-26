@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block head %}
+    <!-- Link to Font Awesome for icons used in the features section -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLMDJ/cnD6SEgS0w8XkQjJ4K5v/3tC+xU+2Q3R5V/T5WJ5F1q2J+P/I4fM2V1M2Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+{% endblock %}
+
+{% block content %}
+
+<!-- Header for visual impact -->
+<header class="bg-white py-5 shadow-sm mb-5 rounded-lg text-center">
+    <div class="container">
+        <h1 class="display-4 fw-bolder text-dark">Secure, Transparent, and Modern Voting.</h1>
+        <p class="lead text-muted">Powered by Biometrics and Trust.</p>
+        <a href="{{ url_for('voter_verification_page') }}" class="btn btn-primary btn-lg mt-3 shadow-lg">Cast Your Vote Now</a>
+    </div>
+</header>
+
+<!-- Mission & Features Section -->
+<section class="section py-5">
+    <div class="container">
+        <!-- Mission -->
+        <div class="row text-center mb-5">
+            <div class="col-md-10 offset-md-1">
+                <h2 class="fw-bold text-primary mb-3">Our Mission</h2>
+                <p class="lead text-dark-emphasis">
+                    BioVote is designed to provide a secure, transparent, and modern voting experience.
+                    By integrating advanced biometric technologies such as
+                    <strong>iris recognition</strong> and <strong>facial verification</strong>,
+                    we ensure that every vote counts and duplication is eliminated.
+                </p>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="card p-4 text-center shadow-lg border-0 h-100 rounded-4 transition duration-300 hover:scale-105">
+                    <!-- Icon from Font Awesome -->
+                    <i class="fa-solid fa-fingerprint mb-3 mx-auto p-3 rounded-circle" style="font-size:2.2rem;color:#fff;background-color:#0077b6;"></i>
+                    <h5 class="fw-bold mt-2">Biometric Security</h5>
+                    <p class="text-muted">Advanced iris and face detection ensures 100% accurate voter authentication.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card p-4 text-center shadow-lg border-0 h-100 rounded-4 transition duration-300 hover:scale-105">
+                    <!-- Icon from Font Awesome -->
+                    <i class="fa-solid fa-check-to-slot mb-3 mx-auto p-3 rounded-circle" style="font-size:2.2rem;color:#fff;background-color:#0d6efd;"></i>
+                    <h5 class="fw-bold mt-2">Easy Voting</h5>
+                    <p class="text-muted">Seamless and user-friendly interface for casting votes securely and quickly.</p>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card p-4 text-center shadow-lg border-0 h-100 rounded-4 transition duration-300 hover:scale-105">
+                    <!-- Icon from Font Awesome -->
+                    <i class="fa-solid fa-shield-halved mb-3 mx-auto p-3 rounded-circle" style="font-size:2.2rem;color:#fff;background-color:#28a745;"></i>
+                    <h5 class="fw-bold mt-2">Transparency & Integrity</h5>
+                    <p class="text-muted">Data is securely stored and managed, ensuring fair and transparent elections.</p>
+                </div>
+            </div>
+            
+            <!-- SMTP/Email Notification Block Added Here -->
+            <div class="col-md-4">
+                <div class="card p-4 text-center shadow-lg border-0 h-100 rounded-4 transition duration-300 hover:scale-105">
+                    <!-- Icon from Font Awesome (Envelope) -->
+                    <i class="fa-solid fa-envelope mb-3 mx-auto p-3 rounded-circle" style="font-size:2.2rem;color:#fff;background-color:#6c757d;"></i>
+                    <h5 class="fw-bold mt-2">Instant Notifications</h5>
+                    <p class="text-muted">Secure email confirmation of voter registration status and credentials via **SMTP**.</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+<!-- Call to Action Section -->
+<section class="bg-light py-5 mt-5">
+    <div class="container text-center">
+        <h3 class="fw-bold text-dark">Ready to Secure the Future of Voting?</h3>
+        <p class="text-muted mb-4">Administrators, log in to manage candidates and voters.</p>
+        <a href="{{ url_for('admin_login') }}" class="btn btn-outline-dark btn-lg">Admin Login</a>
+    </div>
+</section>
+
+{% endblock %}

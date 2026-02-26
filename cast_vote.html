@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2 class="text-center mb-4 fw-bold text-primary">Voter Verification & Voting</h2>
+
+  <!-- Face Capture -->
+  <div class="text-center mb-4">
+    <h5 class="text-primary">Face Scan</h5>
+    <video id="faceVideo" width="320" height="240" autoplay class="border rounded shadow-sm"></video>
+    <br>
+    <button type="button" class="btn btn-outline-primary mt-2" onclick="captureImage('faceVideo','faceCanvas','face')">
+      📸 Capture Face
+    </button>
+    <canvas id="faceCanvas" style="display:none;"></canvas>
+    <img id="face_preview" class="mt-2 rounded shadow-sm" width="150"/>
+  </div>
+
+  <!-- Iris Capture -->
+  <div class="text-center mb-4">
+    <h5 class="text-success">Iris Scan</h5>
+    <video id="irisVideo" width="320" height="240" autoplay class="border rounded shadow-sm"></video>
+    <br>
+    <button type="button" class="btn btn-outline-success mt-2" onclick="captureImage('irisVideo','irisCanvas','iris')">
+      👁️ Capture Iris
+    </button>
+    <canvas id="irisCanvas" style="display:none;"></canvas>
+    <img id="iris_preview" class="mt-2 rounded shadow-sm" width="150"/>
+  </div>
+
+  <!-- Hidden Inputs for base64 images -->
+  <input type="hidden" id="face_b64">
+  <input type="hidden" id="iris_b64">
+  <input type="hidden" id="voter_id">
+
+  <!-- Voting Area (hidden until verified) -->
+  <div id="vote_area" class="mt-4" style="display:none;">
+    <h5 class="text-center">Select Candidate</h5>
+    <select id="candidate_id" class="form-select mb-3 w-50 mx-auto">
+      <option value="">Select Candidate</option>
+    </select>
+    <div class="text-center">
+      <button type="button" class="btn btn-success px-4" onclick="castVote()">🗳️ Cast Vote</button>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/voter_verify.js') }}"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    startCamera('faceVideo');
+    startCamera('irisVideo');
+  });
+</script>
+{% endblock %}

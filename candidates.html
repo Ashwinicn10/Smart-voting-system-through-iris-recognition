@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- Page Heading -->
+    <h2 class="mb-4">Manage Candidates</h2>
+
+    <!-- Stats Cards -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm p-3">
+                <h5>Total Candidates</h5>
+                <p class="fs-4 fw-bold text-primary">{{ total_candidates }}</p>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm p-3">
+                <h5>Total Voters</h5>
+                <p class="fs-4 fw-bold text-success">{{ total_voters }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Candidate Form -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Add New Candidate</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('candidates') }}" method="POST">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Candidate Name</label>
+                        <input type="text" class="form-control" name="name" placeholder="Enter candidate name" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Party</label>
+                        <input type="text" class="form-control" name="party" placeholder="Enter party name" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success">Add Candidate</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Candidate List -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Candidate List</h5>
+
+            <!-- 🔍 Search Bar -->
+            <input type="text" id="candidateSearch" class="form-control w-25" placeholder="Search candidate...">
+        </div>
+
+        <div class="card-body">
+            {% if candidates %}
+            <div class="table-responsive">
+                <table class="table table-striped align-middle" id="candidateTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Party</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in candidates %}
+                        <tr>
+                            <td>{{ c.id }}</td>
+                            <td>{{ c.name }}</td>
+                            <td>{{ c.party }}</td>
+                            <td>
+                                <form action="{{ url_for('delete_candidate', id=c.id) }}" method="POST" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-danger"
+                                        onclick="return confirm('Are you sure you want to delete this candidate?');">
+                                        Delete
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted">No candidates added yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+<!-- ✅ Real-Time Search Script -->
+<script>
+document.getElementById("candidateSearch").addEventListener("keyup", function () {
+    let value = this.value.toLowerCase();
+    let rows = document.querySelectorAll("#candidateTable tbody tr");
+
+    rows.forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(value) ? "" : "none";
+    });
+});
+</script>
+
+{% endblock %}

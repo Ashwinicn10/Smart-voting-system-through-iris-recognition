@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <h2 class="mb-4 text-primary fw-bold">📊 Vote Results</h2>
+
+    <!-- Table of vote results -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            {% if results %}
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>#</th>
+                            <th>Candidate Name</th>
+                            <th>Party</th>
+                            <th>Symbol</th>
+                            <th style="text-align: center;">Total Votes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for c in results %}
+                        <tr class="candidate-row" data-candidate-id="{{ c.id }}" data-votes="{{ c.votes }}">
+                            <td>{{ loop.index }}</td>
+                            <td><strong>{{ c.c_name }}</strong></td>
+                            <td>{{ c.c_party }}</td>
+                            <td>
+                                {% if c.c_symbol %}
+                                    <img src="{{ c.c_symbol }}" alt="Symbol" style="height:40px;">
+                                {% else %}
+                                    <span class="text-muted">N/A</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center;">
+                                <span class="badge {% if c.votes > 0 %}bg-success{% else %}bg-secondary{% endif %}" style="font-size: 1.1em; padding: 0.5em 1em;">
+                                    {{ c.votes }} {% if c.votes == 1 %}vote{% else %}votes{% endif %}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-center text-muted">No candidates registered yet.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Chart -->
+    {% if results %}
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <canvas id="voteChart" style="height:300px;"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const ctx = document.getElementById('voteChart').getContext('2d');
+
+        // Safe way to pass Jinja variables into JS
+        const candidateNames = JSON.parse('{{ results|map(attribute="c_name")|list|tojson|safe }}');
+        const voteCounts = JSON.parse('{{ results|map(attribute="votes")|list|tojson|safe }}');
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: candidateNames,
+                datasets: [{
+                    label: 'Votes',
+                    data: voteCounts,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    title: { display: true, text: 'Votes per Candidate', font: { size: 18 } }
+                },
+                scales: { y: { beginAtZero: true, precision: 0 } }
+            }
+        });
+    });
+    </script>
+    {% endif %}
+
+    <a href="{{ url_for('admin_home') }}" class="btn btn-secondary mt-2">
+        ← Back to Dashboard
+    </a>
+</div>
+{% endblock %}

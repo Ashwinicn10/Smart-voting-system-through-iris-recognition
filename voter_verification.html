@@ -1,0 +1,403 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h2 class="text-center mb-4 fw-bold text-primary">Voter Verification & Voting</h2>
+
+  <!-- CAMERA + OVERLAY -->
+  <div class="text-center position-relative">
+    <video id="video" width="480" height="360" autoplay class="rounded shadow-sm border"></video>
+    <canvas id="overlay"
+            style="position:absolute; left:50%; transform:translateX(-50%); top:0; pointer-events:none;"></canvas>
+
+    <br />
+    <button id="captureBtn" class="btn btn-primary mt-3 px-4 fw-semibold">
+      📸 Capture Face &amp; Iris
+    </button>
+
+    <div id="loadingSpinner" style="display:none;" class="mt-3">
+      <div class="spinner-border text-primary"></div>
+      <p class="fw-bold text-secondary mb-0">Verifying identity, please wait...</p>
+    </div>
+  </div>
+
+  <!-- PREVIEW -->
+  <div id="preview" class="text-center mt-4" style="display:none;">
+    <h5 class="fw-bold text-secondary mb-3">Preview Captured Images</h5>
+    <img id="facePreview" width="180" class="rounded shadow me-2 border" alt="Face" />
+    <img id="irisPreview" width="180" class="rounded shadow border" alt="Iris (both eyes)" />
+  </div>
+
+  <!-- CANDIDATE SELECTION -->
+  <div id="candidateSection" class="mt-5" style="display:none;">
+    <h4 class="text-center text-success mb-3">
+      🟢 Verification Successful! Cast Your Vote
+    </h4>
+    <form id="voteForm" class="text-center">
+      <input type="hidden" name="voter_id" id="voter_id" />
+      <div class="mb-3">
+        <label for="candidate_id" class="form-label fw-semibold">Select Candidate:</label>
+        <select name="candidate_id" id="candidate_id" class="form-select w-50 mx-auto" required>
+          <option value="">-- Choose a Candidate --</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-success px-4 fw-semibold">
+        🗳️ Cast Vote
+      </button>
+    </form>
+  </div>
+
+  <!-- MESSAGE AREA -->
+  <div id="message" class="mt-4 text-center fw-bold"></div>
+  
+  <!-- FACE COUNT MESSAGE -->
+  <div id="faceCountMessage" class="mt-3 text-center fw-bold text-danger" style="display:block;">
+    ⚠️ Only ONE person should be in camera view to vote. Please remove others.
+  </div>
+</div>
+
+<!-- MEDIAPIPE SCRIPTS -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+<script>
+  // ========= ELEMENTS =========
+  const video            = document.getElementById("video");
+  const overlay          = document.getElementById("overlay");
+  const overlayCtx       = overlay.getContext("2d");
+
+  const facePreview      = document.getElementById("facePreview");
+  const irisPreview      = document.getElementById("irisPreview");
+  const preview          = document.getElementById("preview");
+  const loadingSpinner   = document.getElementById("loadingSpinner");
+  const message          = document.getElementById("message");
+  const candidateSection = document.getElementById("candidateSection");
+  const candidateSelect  = document.getElementById("candidate_id");
+  const captureBtn       = document.getElementById("captureBtn");
+  const voteForm         = document.getElementById("voteForm");
+  const voterIdInput     = document.getElementById("voter_id");
+
+  let latestResults = null;
+  let singleFace    = false;
+  let voter_id      = null;
+
+  // ========= START CAMERA =========
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(function (stream) {
+      video.srcObject = stream;
+      video.onloadedmetadata = function () {
+        video.play();
+        overlay.width  = video.videoWidth;
+        overlay.height = video.videoHeight;
+      };
+    })
+    .catch(function (err) {
+      alert("❌ Camera access denied: " + err);
+      console.error(err);
+    });
+
+  // ========= INIT FACEMESH =========
+  const fm = new FaceMesh({
+    locateFile: function (f) {
+      return "https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/" + f;
+    }
+  });
+
+  fm.setOptions({
+    maxNumFaces: 10,
+    refineLandmarks: true,
+    minDetectionConfidence: 0.6,
+    minTrackingConfidence: 0.6
+  });
+
+  fm.onResults(onResults);
+
+  const mpCamera = new Camera(video, {
+    onFrame: async () => {
+      await fm.send({ image: video });
+    },
+    width: 640,
+    height: 480
+  });
+  mpCamera.start();
+
+  // ========= FACEMESH CALLBACK =========
+  function onResults(results) {
+    latestResults = results;
+
+    if (!video.videoWidth || !video.videoHeight) {
+      return;
+    }
+
+    overlay.width  = video.videoWidth;
+    overlay.height = video.videoHeight;
+    overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+
+    const numFaces = results.multiFaceLandmarks ? results.multiFaceLandmarks.length : 0;
+    const faceCountMsg = document.getElementById("faceCountMessage");
+
+    if (numFaces !== 1) {
+      // Red border = no face or multiple faces
+      overlayCtx.strokeStyle = "red";
+      overlayCtx.lineWidth = 6;
+      overlayCtx.strokeRect(2, 2, overlay.width - 4, overlay.height - 4);
+      singleFace = false;
+      
+      // Show warning with actual face count
+      faceCountMsg.style.display = "block";
+      if (numFaces === 0) {
+        faceCountMsg.innerHTML = "⚠️ No person detected. Please position yourself in front of the camera.";
+      } else {
+        faceCountMsg.innerHTML = "⚠️ " + numFaces + " people detected. Only ONE person should be in camera view to vote. Please remove others.";
+      }
+      return;
+    }
+
+    // Green border = exactly one face
+    overlayCtx.strokeStyle = "limegreen";
+    overlayCtx.lineWidth = 6;
+    overlayCtx.strokeRect(2, 2, overlay.width - 4, overlay.height - 4);
+
+    singleFace = true;
+    
+    // Hide warning message when exactly one face is detected
+    faceCountMsg.style.display = "none";
+  }
+
+  // ========= HELPERS =========
+
+  // Crop face using bounding box of all landmarks (same style as registration FaceMesh)
+  function cropFaceFromVideo(landmarks) {
+    const vw = video.videoWidth  || 640;
+    const vh = video.videoHeight || 480;
+
+    const xs = landmarks.map(function (p) { return p.x * vw; });
+    const ys = landmarks.map(function (p) { return p.y * vh; });
+
+    const x1 = Math.min.apply(null, xs);
+    const x2 = Math.max.apply(null, xs);
+    const y1 = Math.min.apply(null, ys);
+    const y2 = Math.max.apply(null, ys);
+
+    const w = x2 - x1;
+    const h = y2 - y1;
+
+    if (w <= 0 || h <= 0) {
+      return null;
+    }
+
+    const c  = document.createElement("canvas");
+    const cx = c.getContext("2d");
+    c.width  = w;
+    c.height = h;
+
+    cx.drawImage(video, x1, y1, w, h, 0, 0, w, h);
+    return c.toDataURL("image/jpeg", 0.9);
+  }
+
+  // Get iris crop for one eye using iris landmarks (468–471 for left, 473–476 for right)
+  function getIrisCropCanvas(landmarks, eye) {
+    const vw = video.videoWidth  || 640;
+    const vh = video.videoHeight || 480;
+
+    var indices;
+    if (eye === "left") {
+      indices = [468, 469, 470, 471];
+    } else {
+      indices = [473, 474, 475, 476];
+    }
+
+    const xs = indices.map(function (i) { return landmarks[i].x * vw; });
+    const ys = indices.map(function (i) { return landmarks[i].y * vh; });
+
+    const minX = Math.min.apply(null, xs);
+    const maxX = Math.max.apply(null, xs);
+    const minY = Math.min.apply(null, ys);
+    const maxY = Math.max.apply(null, ys);
+
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+
+    const srcSize = 80; // region around the iris
+    const outSize = 120; // final square size
+
+    const irisCanvas = document.createElement("canvas");
+    const ictx       = irisCanvas.getContext("2d");
+    irisCanvas.width  = outSize;
+    irisCanvas.height = outSize;
+
+    ictx.drawImage(
+      video,
+      cx - srcSize / 2,
+      cy - srcSize / 2,
+      srcSize,
+      srcSize,
+      0,
+      0,
+      outSize,
+      outSize
+    );
+
+    return irisCanvas;
+  }
+
+  // Combine left + right iris side by side, similar style to your registration script
+  function cropCombinedIris(landmarks) {
+    const leftCanvas  = getIrisCropCanvas(landmarks, "left");
+    const rightCanvas = getIrisCropCanvas(landmarks, "right");
+
+    const combined = document.createElement("canvas");
+    const cctx     = combined.getContext("2d");
+
+    combined.width  = leftCanvas.width + rightCanvas.width;
+    combined.height = Math.max(leftCanvas.height, rightCanvas.height);
+
+    cctx.drawImage(leftCanvas, 0, 0);
+    cctx.drawImage(rightCanvas, leftCanvas.width, 0);
+
+    return combined.toDataURL("image/jpeg", 0.9);
+  }
+
+  // ========= CAPTURE BUTTON =========
+  captureBtn.addEventListener("click", async function () {
+    // Check for multiple faces
+    const numFaces = latestResults && latestResults.multiFaceLandmarks ? latestResults.multiFaceLandmarks.length : 0;
+    
+    if (numFaces > 1) {
+      alert("❌ Cannot vote: " + numFaces + " people detected. Only ONE person should be in camera view.");
+      return;
+    }
+    
+    if (!singleFace || !latestResults) {
+      alert("⚠️ Ensure exactly ONE face is visible (green border) before capture.");
+      return;
+    }
+
+    loadingSpinner.style.display = "block";
+    message.innerHTML = "";
+    captureBtn.disabled = true;
+
+    const lm = latestResults.multiFaceLandmarks[0];
+
+    // 1) FACE
+    const face_b64 = cropFaceFromVideo(lm);
+
+    // 2) COMBINED IRIS (left + right)
+    const iris_b64 = cropCombinedIris(lm);
+
+    if (!face_b64 || !iris_b64) {
+      loadingSpinner.style.display = "none";
+      captureBtn.disabled = false;
+      message.innerHTML = "<span class='text-danger'>❌ Failed to capture face/iris. Try again.</span>";
+      return;
+    }
+
+    // Show preview
+    facePreview.src = face_b64;
+    irisPreview.src = iris_b64;
+    preview.style.display = "block";
+
+    // Call backend /voter/verify
+    message.innerHTML = "<span class='text-info'>⏳ Verifying your biometric data...</span>";
+
+    try {
+      const res = await fetch("/voter/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          face_image: face_b64,
+          iris_image: iris_b64
+        })
+      });
+
+      const data = await res.json();
+      loadingSpinner.style.display = "none";
+      captureBtn.disabled = false;
+
+      if (data.status === "ok") {
+        // Verified
+        voter_id = data.voter_id;
+        voterIdInput.value = voter_id;
+
+        var faceScoreText = data.face_score !== undefined ? data.face_score : "N/A";
+        var irisScoreText = data.iris_score !== undefined ? data.iris_score : "N/A";
+
+        message.innerHTML =
+          "<span class='text-success'>" +
+          "✔ " + data.message + "<br />" +
+          "(Face score: " + faceScoreText + ", Iris score: " + irisScoreText + ")" +
+          "</span>";
+
+        // Fill candidates dropdown
+        candidateSelect.innerHTML = "<option value=''>-- Choose a Candidate --</option>";
+        (data.candidates || []).forEach(function (c) {
+          const opt = document.createElement("option");
+          opt.value = c.id;
+          opt.textContent = c.c_name + " (" + c.c_party + ")";
+          candidateSelect.appendChild(opt);
+        });
+
+        candidateSection.style.display = "block";
+      } else {
+        // Not verified
+        var fs = (data.face_score !== undefined) ? data.face_score : "N/A";
+        var is = (data.iris_score !== undefined) ? data.iris_score : "N/A";
+
+        var msgText = data.message ? data.message : "Verification failed.";
+        message.innerHTML =
+          "<span class='text-danger'>" +
+          "❌ " + msgText + "<br />" +
+          "(Face score: " + fs + ", Iris score: " + is + ")" +
+          "</span>";
+
+        candidateSection.style.display = "none";
+      }
+    } catch (err) {
+      console.error(err);
+      loadingSpinner.style.display = "none";
+      captureBtn.disabled = false;
+      message.innerHTML = "<span class='text-danger'>⚠️ Server error. Please try again.</span>";
+    }
+  });
+
+  // ========= VOTE SUBMIT =========
+  voteForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    if (!voter_id) {
+      alert("Voter not verified.");
+      return;
+    }
+
+    const candidate_id = candidateSelect.value;
+    if (!candidate_id) {
+      alert("Please select a candidate.");
+      return;
+    }
+
+    const form = new FormData();
+    form.append("voter_id", voter_id);
+    form.append("candidate_id", candidate_id);
+
+    try {
+      const res = await fetch("/voter/vote", {
+        method: "POST",
+        body: form
+      });
+      const data = await res.json();
+
+      if (data.status === "ok") {
+        message.innerHTML =
+          "<span class='text-success'>🎉 " + data.message + "</span>";
+        candidateSection.style.display = "none";
+        captureBtn.disabled = true; // prevent re-use
+      } else {
+        message.innerHTML =
+          "<span class='text-danger'>⚠️ " + data.message + "</span>";
+      }
+    } catch (err) {
+      console.error(err);
+      message.innerHTML =
+        "<span class='text-danger'>❌ Vote submission error.</span>";
+    }
+  });
+</script>
+{% endblock %}

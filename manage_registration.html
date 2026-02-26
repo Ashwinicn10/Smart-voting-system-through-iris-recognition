@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid mt-4">
+  <h2 class="text-center mb-4 fw-bold text-primary">
+    🧾 Manage Voters & Candidates
+  </h2>
+
+  <!-- Flash Messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="container mb-3">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- Search Bar -->
+  <div class="d-flex justify-content-end mb-3">
+      <input type="text" id="searchInput" class="form-control w-25 me-2" placeholder="Search voters / candidates...">
+      <button class="btn btn-primary" onclick="filterTables()">Search</button>
+  </div>
+ 
+
+  <div class="row">
+    <!-- Voters Table -->
+    <div class="col-md-12 mb-5">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Registered Voters</h5>
+          <span class="badge bg-light text-dark">Total: {{ voters|length }}</span>
+        </div>
+        <div class="card-body table-responsive">
+          <table id="votersTable" class="table table-hover table-bordered align-middle">
+            <thead class="table-light">
+              <tr class="text-center">
+                <th>SL.No</th>
+                <th>Name</th>
+                <th>Aadhaar</th>
+                <th>Phone</th>
+                <th>Verified</th>
+                <th>Has Voted</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for voter in voters %}
+              <tr>
+                <td class="text-center">{{ loop.index }}</td>   <!-- Auto Serial Number -->
+                <td>{{ voter.name }}</td>
+                <td>{{ voter.aadhaar }}</td>
+                <td>{{ voter.phone }}</td>
+                <td class="text-center">
+                  {% if voter.verified %}
+                    <span class="badge bg-success">Yes</span>
+                  {% else %}
+                    <span class="badge bg-secondary">No</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  {% if voter.voted %}
+                    <span class="badge bg-success">Yes</span>
+                  {% else %}
+                    <span class="badge bg-warning text-dark">No</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  <form method="POST" class="d-inline">
+                    <input type="hidden" name="voter_id" value="{{ voter.id }}">
+                    <button name="action" value="verify" class="btn btn-sm btn-success me-1">
+                      <i class="fa-solid fa-user-check"></i> Verify
+                    </button>
+                    <button name="action" value="delete" class="btn btn-sm btn-danger">
+                      <i class="fa-solid fa-trash"></i> Delete
+                    </button>
+                  </form>
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="7" class="text-center text-muted">No registered voters yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Candidates Table -->
+    <div class="col-md-12">
+      <div class="card shadow-sm border-0">
+        <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Candidates & Votes</h5>
+          <span class="badge bg-light text-dark">Total: {{ candidates|length }}</span>
+        </div>
+        <div class="card-body table-responsive">
+          <table id="candidatesTable" class="table table-hover table-bordered align-middle">
+            <thead class="table-light">
+              <tr class="text-center">
+                <th>ID</th>
+                <th>Name</th>
+                <th>Party</th>
+                <th>Symbol</th>
+                <th>Votes Received</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for candidate in candidates %}
+              <tr>
+                <td class="text-center">{{ loop.index }}</td>  
+                <td>{{ candidate.c_name }}</td>
+                <td>{{ candidate.c_party }}</td>
+                <td>{{ candidate.c_symbol }}</td>
+                <td class="text-center">
+                  <span class="badge {% if candidate.vote_count > 0 %}bg-success{% else %}bg-secondary{% endif %}" style="font-size: 1em; padding: 0.4em 0.8em;">
+                    {{ candidate.vote_count or 0 }} {% if candidate.vote_count == 1 %}vote{% else %}votes{% endif %}
+                  </span>
+                </td>
+              </tr>
+              {% else %}
+              <tr><td colspan="5" class="text-center text-muted">No candidates added yet.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ✅ Search Script -->
+<script>
+function filterTables() {
+    const input = document.getElementById("searchInput").value.toLowerCase();
+
+    // Voters filter
+    document.querySelectorAll("#votersTable tbody tr").forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(input) ? "" : "none";
+    });
+
+    // Candidates filter
+    document.querySelectorAll("#candidatesTable tbody tr").forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(input) ? "" : "none";
+    });
+}
+</script>
+
+{% endblock %}

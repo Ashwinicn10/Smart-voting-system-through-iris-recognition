@@ -1,0 +1,181 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h2 class="text-center mb-4 fw-bold text-primary">Voter Verification & Voting</h2>
+
+  <!-- Camera -->
+  <div class="text-center">
+    <video id="video" width="480" height="360" autoplay class="border rounded shadow"></video>
+    <br>
+    <button id="captureBtn" class="btn btn-primary mt-3 px-4 fw-semibold">
+      📸 Capture Face & Iris
+    </button>
+  </div>
+
+  <!-- Preview -->
+  <div id="previewBox" class="text-center mt-4" style="display:none;">
+    <h5 class="fw-bold text-secondary">Preview</h5>
+    <img id="facePreview" width="200" class="rounded shadow me-2 border">
+    <img id="irisPreview" width="200" class="rounded shadow border">
+  </div>
+
+  <!-- Candidates -->
+  <div id="candidateSection" class="mt-5" style="display:none;">
+    <h4 class="text-center text-success mb-3">🟢 Verified! Cast Your Vote</h4>
+    <form id="voteForm" class="text-center">
+      <input type="hidden" id="voter_id" name="voter_id">
+      <select id="candidate_id" name="candidate_id" class="form-select w-50 mx-auto" required>
+        <option value="">-- Choose a Candidate --</option>
+      </select>
+      <button type="submit" class="btn btn-success mt-3 px-4 fw-semibold">🗳 Cast Vote</button>
+    </form>
+  </div>
+
+  <div id="message" class="mt-4 text-center fw-bold"></div>
+
+</div>
+
+<!-- Mediapipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+
+<script>
+const video = document.getElementById("video");
+const facePreview = document.getElementById("facePreview");
+const irisPreview = document.getElementById("irisPreview");
+const previewBox = document.getElementById("previewBox");
+const captureBtn = document.getElementById("captureBtn");
+const message = document.getElementById("message");
+const candidateSection = document.getElementById("candidateSection");
+const candidateSelect = document.getElementById("candidate_id");
+const voterIdInput = document.getElementById("voter_id");
+
+let faceLandmarks = null;
+
+// Start webcam
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(stream => { video.srcObject = stream; })
+  .catch(err => alert("Camera access denied: " + err));
+
+// Mediapipe FaceMesh
+const faceMesh = new FaceMesh({
+  locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`
+});
+faceMesh.setOptions({
+  maxNumFaces: 1,
+  refineLandmarks: true,
+  minDetectionConfidence: 0.5,
+  minTrackingConfidence: 0.5
+});
+faceMesh.onResults(res => {
+  if (res.multiFaceLandmarks && res.multiFaceLandmarks.length === 1) {
+    faceLandmarks = res.multiFaceLandmarks[0];
+  }
+});
+
+// Attach camera
+const camera = new Camera(video, {
+  onFrame: async () => { await faceMesh.send({ image: video }); },
+  width: 640,
+  height: 480
+});
+camera.start();
+
+// Capture button
+captureBtn.addEventListener("click", async () => {
+  if (!faceLandmarks) {
+    message.innerHTML = "❌ No face detected!";
+    return;
+  }
+
+  message.innerHTML = "⏳ Processing...";
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d");
+
+  // Draw full video frame
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.drawImage(video, 0, 0);
+
+  // FACE CROP (same as registration)
+  const xs = faceLandmarks.map(p => p.x * canvas.width);
+  const ys = faceLandmarks.map(p => p.y * canvas.height);
+
+  const x1 = Math.min(...xs);
+  const y1 = Math.min(...ys);
+  const w = Math.max(...xs) - x1;
+  const h = Math.max(...ys) - y1;
+
+  const faceCV = document.createElement("canvas");
+  faceCV.width = w;
+  faceCV.height = h;
+  faceCV.getContext("2d").drawImage(canvas, x1, y1, w, h, 0, 0, w, h);
+
+  const face_b64 = faceCV.toDataURL("image/jpeg", 0.9);
+
+  // IRIS CROP (LEFT ONLY — EXACT MATCH WITH REGISTRATION)
+  const irisIdx = [33, 133, 159, 145];
+  const pts = irisIdx.map(i => faceLandmarks[i]);
+
+  const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length * canvas.width;
+  const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length * canvas.height;
+
+  const size = 180; // EXACT SAME SIZE as registration
+  const irisCV = document.createElement("canvas");
+  irisCV.width = size;
+  irisCV.height = size;
+  irisCV.getContext("2d")
+        .drawImage(video, cx - 90, cy - 90, size, size, 0, 0, size, size);
+
+  const iris_b64 = irisCV.toDataURL("image/jpeg", 0.9);
+
+  // Preview
+  facePreview.src = face_b64;
+  irisPreview.src = iris_b64;
+  previewBox.style.display = "block";
+
+  // Verify with backend
+  const res = await fetch("/voter/verify", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ face_image: face_b64, iris_image: iris_b64 })
+  });
+
+  const data = await res.json();
+
+  if (data.status === "ok") {
+    voterIdInput.value = data.voter_id;
+    message.innerHTML = `<span class='text-success'>${data.message}</span>`;
+
+    // Fill candidate dropdown
+    candidateSelect.innerHTML = '<option value="">-- Choose --</option>';
+    data.candidates.forEach(c => {
+      candidateSelect.innerHTML += `<option value="${c.id}">${c.c_name} (${c.c_party})</option>`;
+    });
+
+    candidateSection.style.display = "block";
+  } else {
+    message.innerHTML = `<span class='text-danger'>❌ ${data.message}</span>`;
+    candidateSection.style.display = "none";
+  }
+});
+
+// Cast vote
+document.getElementById("voteForm").addEventListener("submit", async e => {
+  e.preventDefault();
+
+  const fd = new FormData();
+  fd.append("voter_id", voterIdInput.value);
+  fd.append("candidate_id", candidateSelect.value);
+
+  const res = await fetch("/voter/vote", { method: "POST", body: fd });
+  const data = await res.json();
+
+  if (data.status === "ok") {
+    message.innerHTML = `<span class='text-success'>🎉 ${data.message}</span>`;
+  } else {
+    message.innerHTML = `<span class='text-danger'>⚠ ${data.message}</span>`;
+  }
+});
+</script>
+{% endblock %}

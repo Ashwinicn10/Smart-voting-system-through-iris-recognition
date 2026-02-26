@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid mt-4">
+  <h2 class="mb-4 text-center fw-bold">Admin Dashboard</h2>
+
+  <div class="row text-center">
+    <div class="col-md-6 mb-3">
+      <div class="card shadow-sm border-primary">
+        <div class="card-body">
+          <h5 class="card-title">Total Voters</h5>
+          <p class="display-6">{{ total_voters }}</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6 mb-3">
+      <div class="card shadow-sm border-success">
+        <div class="card-body">
+          <h5 class="card-title">Total Candidates</h5>
+          <p class="display-6">{{ total_candidates }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="text-center mt-4">
+    <a href="{{ url_for('admin_voter_register') }}" class="btn btn-primary me-2">Register Voter</a>
+    <a href="{{ url_for('candidate_register') }}" class="btn btn-success me-2">Register Candidate</a>
+    <a href="{{ url_for('manage_registration') }}" class="btn btn-warning me-2">Manage Registrations</a>
+    <a href="{{ url_for('vote_results') }}" class="btn btn-info">Vote Results</a>
+  </div>
+</div>
+{% endblock %}

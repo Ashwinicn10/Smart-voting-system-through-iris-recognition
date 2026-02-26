@@ -1,0 +1,422 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+
+    <h2 class="fw-bold text-primary mb-3">📋 Manage Voter Registration</h2>
+
+    <!-- FLASH MESSAGES -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} alert-dismissible fade show">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+
+    <div class="row">
+        <!-- LEFT SIDE : REGISTRATION FORM -->
+        <div class="col-lg-5">
+
+            <div class="card shadow p-4 border-0 mb-3">
+                <h5 class="fw-bold text-secondary mb-3">➕ Register New Voter (OTP + Biometric)</h5>
+
+                <form method="POST" id="registrationForm">
+
+                    <!-- PERSONAL DETAILS -->
+                    <div id="personalDetails">
+                        <div class="mb-2">
+                            <label class="form-label">Full Name</label>
+                            <input type="text" 
+                                   name="name" 
+                                   id="inputName"
+                                   class="form-control" 
+                                   required
+                                />
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label">Aadhaar Number</label>
+                            <input type="text" 
+                                   name="aadhaar" 
+                                   id="inputAadhaar" 
+                                   maxlength="12" 
+                                   class="form-control" 
+                                   required
+                                />
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label">Phone Number</label>
+                            <input type="text" 
+                                   name="phone" 
+                                   id="inputPhone" 
+                                   maxlength="10" 
+                                   class="form-control"
+                                   required
+                                />
+                        </div>
+
+                        <div class="mb-2">
+                            <label class="form-label">Email</label>
+                            <input type="email" 
+                                   name="email" 
+                                   id="inputEmail" 
+                                   class="form-control" 
+                                   required
+                                />
+                        </div>
+                    </div>
+
+                    <!-- SEND OTP BUTTON -->
+                    <div class="d-grid mb-3">
+                        <button type="button" 
+                                id="sendOtpButton" 
+                                class="btn btn-info fw-bold"
+                            >
+                                ✉️ Send OTP
+                            </button>
+                    </div>
+
+                    <!-- OTP SECTION -->
+                    <div id="otpSection" style="display:none;">
+                        <div class="input-group mb-2">
+                            <input type="text" id="inputOtp" maxlength="6" class="form-control" placeholder="Enter OTP" disabled>
+                            <button type="button" id="verifyOtpButton" class="btn btn-warning fw-bold" disabled>Verify OTP</button>
+                        </div>
+                        <small id="otpMessage" style="display:none;"></small>
+                    </div>
+
+                    <!-- BIOMETRIC CAPTURE -->
+                    <h6 class="fw-bold text-muted mt-3 mb-2">2. Biometric Capture</h6>
+
+                    <div class="text-center mb-2">
+                        <div id="faceBox" class="rounded shadow-sm mb-2" style="position:relative; border:6px solid gray; display:inline-block;">
+                            <video id="video" width="100%" height="250" autoplay style="display:block;"></video>
+                            <canvas id="overlay" width="640" height="480" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
+                        </div>
+                        <canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+                    </div>
+                    <p id="faceStatus" class="text-center fw-bold mb-2" style="color:gray;">Waiting for face detection...</p>
+
+                    <div class="d-flex gap-2 mb-2">
+                        <button type="button" id="captureFace" class="btn btn-dark w-50" disabled>📸 Capture Face</button>
+                        <button type="button" id="captureIris" class="btn btn-success w-50" disabled>👁️ Capture Iris</button>
+                    </div>
+
+                    <!-- PREVIEW -->
+                    <div id="previewSection" class="text-center mb-2" style="display:none;">
+                        <img id="facePreview" width="120" class="m-1 border rounded">
+                        <img id="irisPreview" width="120" class="m-1 border rounded">
+                    </div>
+
+                    <!-- HIDDEN INPUTS -->
+                    <input type="hidden" name="face_image_b64" id="face_image_b64">
+                    <input type="hidden" name="iris_image_b64" id="iris_image_b64">
+
+                    <button class="btn btn-primary w-100 fw-bold mt-2" id="registerButton" disabled>
+                        ✅ Register Voter
+                    </button>
+                </form>
+            </div>
+
+        </div>
+
+        <!-- RIGHT SIDE: VOTER LIST -->
+        <div class="col-lg-7">
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="fw-bold">🗂️ Registered Voters</h5>
+                <input id="searchVoter" type="text" class="form-control w-50" placeholder="🔍 Search voter...">
+            </div>
+
+            <div class="table-responsive card shadow p-3">
+                <table class="table table-bordered align-middle" id="voterTable">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>#</th>
+                            <th>Name</th>
+                            <th>Aadhaar</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Face</th>
+                            <th>Iris</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for v in voters %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td>{{ v.name }}</td>
+                            <td>{{ v.aadhaar }}</td>
+                            <td>{{ v.phone }}</td>
+                            <td>{{ v.email }}</td>
+                            <td>
+                                {% if v.face_image %}
+                                    {% if '/' in v.face_image %}
+                                        <img src="{{ url_for('static', filename=v.face_image) }}" height="40">
+                                    {% else %}
+                                        <img src="{{ url_for('static', filename='uploads/face/' ~ v.face_image) }}" height="40">
+                                    {% endif %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if v.iris_image %}
+                                    {% if '/' in v.iris_image %}
+                                        <img src="{{ url_for('static', filename=v.iris_image) }}" height="40">
+                                    {% else %}
+                                        <img src="{{ url_for('static', filename='uploads/iris/' ~ v.iris_image) }}" height="40">
+                                    {% endif %}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a class="btn btn-danger btn-sm" href="?delete_id={{ v.id }}" onclick="return confirm('Delete this voter?')">🗑</a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+<!-- JS LOGIC -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script>
+let video = document.getElementById("video");
+let canvas = document.getElementById("canvas");
+let overlay = document.getElementById("overlay");
+let overlayCtx = overlay.getContext("2d");
+let ctx = canvas.getContext("2d");
+let faceStatus = document.getElementById("faceStatus");
+let faceBox = document.getElementById("faceBox");
+
+const sendOtpButton = document.getElementById('sendOtpButton');
+const verifyOtpButton = document.getElementById('verifyOtpButton');
+const inputOtp = document.getElementById('inputOtp');
+const otpSection = document.getElementById('otpSection');
+const otpMessage = document.getElementById('otpMessage');
+const registerButton = document.getElementById('registerButton');
+const captureFaceButton = document.getElementById("captureFace");
+const captureIrisButton = document.getElementById("captureIris");
+const facePreview = document.getElementById("facePreview");
+const irisPreview = document.getElementById("irisPreview");
+const previewSection = document.getElementById("previewSection");
+const faceImageB64 = document.getElementById("face_image_b64");
+const irisImageB64 = document.getElementById("iris_image_b64");
+
+let otpVerified = false;
+let singleFace = false;
+
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => video.srcObject = stream)
+.catch(() => alert("Camera access denied"));
+
+let latestResults = null;
+const fm = new FaceMesh({ locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}` });
+fm.setOptions({ maxNumFaces: 10, refineLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+fm.onResults(onResults);
+const mpCamera = new Camera(video, { onFrame: async () => { await fm.send({ image: video }); }, width: 640, height: 480 });
+mpCamera.start();
+
+// Face detection callback to draw border and update status
+function onResults(results) {
+  latestResults = results;
+
+  if (!video.videoWidth || !video.videoHeight) {
+    return;
+  }
+
+  overlay.width = video.videoWidth;
+  overlay.height = video.videoHeight;
+  overlayCtx.clearRect(0, 0, overlay.width, overlay.height);
+
+  // Check for faces
+  const numFaces = results.multiFaceLandmarks ? results.multiFaceLandmarks.length : 0;
+
+  if (numFaces === 0) {
+    // No face detected - red border
+    overlayCtx.strokeStyle = "red";
+    overlayCtx.lineWidth = 8;
+    overlayCtx.strokeRect(4, 4, overlay.width - 8, overlay.height - 8);
+    faceBox.style.borderColor = "red";
+    faceStatus.innerHTML = "❌ No face detected. Please look at the camera.";
+    faceStatus.style.color = "red";
+    singleFace = false;
+  } else if (numFaces === 1) {
+    // Exactly one face - green border
+    overlayCtx.strokeStyle = "limegreen";
+    overlayCtx.lineWidth = 8;
+    overlayCtx.strokeRect(4, 4, overlay.width - 8, overlay.height - 8);
+    faceBox.style.borderColor = "limegreen";
+    faceStatus.innerHTML = "✅ Perfect! One face detected. Ready to capture.";
+    faceStatus.style.color = "green";
+    singleFace = true;
+  } else {
+    // Multiple faces - red border
+    overlayCtx.strokeStyle = "red";
+    overlayCtx.lineWidth = 8;
+    overlayCtx.strokeRect(4, 4, overlay.width - 8, overlay.height - 8);
+    faceBox.style.borderColor = "red";
+    faceStatus.innerHTML = `⚠️ ${numFaces} faces detected! Only ONE person should be in the frame.`;
+    faceStatus.style.color = "red";
+    singleFace = false;
+  }
+}
+
+function cropFaceFromVideo(landmarks) {
+  const vw = video.videoWidth || 640;
+  const vh = video.videoHeight || 480;
+  const xs = landmarks.map(p => p.x * vw);
+  const ys = landmarks.map(p => p.y * vh);
+  const x1 = Math.min(...xs);
+  const x2 = Math.max(...xs);
+  const y1 = Math.min(...ys);
+  const y2 = Math.max(...ys);
+  const w = x2 - x1;
+  const h = y2 - y1;
+  const c = document.createElement("canvas");
+  c.width = w; c.height = h;
+  c.getContext("2d").drawImage(video, x1, y1, w, h, 0, 0, w, h);
+  return c.toDataURL("image/jpeg", 0.9);
+}
+
+function getIrisCropCanvas(landmarks, indices) {
+  const vw = video.videoWidth || 640;
+  const vh = video.videoHeight || 480;
+  const xs = indices.map(i => landmarks[i].x * vw);
+  const ys = indices.map(i => landmarks[i].y * vh);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minY = Math.min(...ys);
+  const maxY = Math.max(...ys);
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const srcSize = 80;
+  const outSize = 120;
+  const irisCanvas = document.createElement("canvas");
+  const ictx = irisCanvas.getContext("2d");
+  irisCanvas.width = outSize;
+  irisCanvas.height = outSize;
+  ictx.drawImage(video, cx - srcSize / 2, cy - srcSize / 2, srcSize, srcSize, 0, 0, outSize, outSize);
+  return irisCanvas;
+}
+
+function cropCombinedIris(landmarks) {
+  const left = getIrisCropCanvas(landmarks, [468, 469, 470, 471]);
+  const right = getIrisCropCanvas(landmarks, [473, 474, 475, 476]);
+  const combined = document.createElement("canvas");
+  const cctx = combined.getContext("2d");
+  combined.width = left.width + right.width;
+  combined.height = Math.max(left.height, right.height);
+  cctx.drawImage(left, 0, 0);
+  cctx.drawImage(right, left.width, 0);
+  return combined.toDataURL("image/jpeg", 0.9);
+}
+
+// Show OTP Message
+function showOtpMsg(text, error=false) {
+    otpMessage.style.display = "block";
+    otpMessage.innerHTML = text;
+    otpMessage.style.color = error ? "red" : "green";
+}
+
+// Enable Register Button
+function updateRegisterButton() {
+    registerButton.disabled = !(otpVerified && faceImageB64.value && irisImageB64.value);
+}
+
+// --- SEND OTP ---
+sendOtpButton.onclick = async () => {
+    let email = document.getElementById("inputEmail").value;
+    let formData = new FormData();
+    formData.append("email", email);
+
+    let res = await fetch("/send_otp", { method: "POST", body: formData });
+    let data = await res.json();
+
+    otpSection.style.display = "block";
+    if (data.status === "success") {
+        showOtpMsg("OTP sent! Check email.");
+        inputOtp.disabled = false;
+        verifyOtpButton.disabled = false;
+    } else {
+        showOtpMsg(data.msg, true);
+    }
+};
+
+// --- VERIFY OTP ---
+verifyOtpButton.onclick = async () => {
+    let otp = inputOtp.value;
+    let email = document.getElementById("inputEmail").value;
+
+    let formData = new FormData();
+    formData.append("otp", otp);
+    formData.append("email", email);
+
+    let res = await fetch("/verify_otp", { method: "POST", body: formData });
+    let data = await res.json();
+
+    if (data.status === "success") {
+        otpVerified = true;
+        showOtpMsg("OTP Verified!");
+        captureFaceButton.disabled = false;
+        captureIrisButton.disabled = false;
+        verifyOtpButton.style.display = "none";
+    } else {
+        showOtpMsg("Invalid OTP", true);
+    }
+};
+
+captureFaceButton.onclick = () => {
+    if (!singleFace || !latestResults) { 
+        alert("⚠️ Ensure exactly ONE face is visible (green border) before capture."); 
+        return; 
+    }
+    const img = cropFaceFromVideo(latestResults.multiFaceLandmarks[0]);
+    faceImageB64.value = img;
+    facePreview.src = img;
+    previewSection.style.display = "block";
+    updateRegisterButton();
+};
+
+captureIrisButton.onclick = () => {
+    if (!singleFace || !latestResults) { 
+        alert("⚠️ Ensure exactly ONE face is visible (green border) before capture."); 
+        return; 
+    }
+    const img = cropCombinedIris(latestResults.multiFaceLandmarks[0]);
+    irisImageB64.value = img;
+    irisPreview.src = img;
+    previewSection.style.display = "block";
+    updateRegisterButton();
+};
+
+// --- SUBMIT FORM ---
+registerButton.onclick = () => {
+    if (registerButton.disabled) return;
+    document.getElementById("registrationForm").submit();
+};
+
+// --- SEARCH ---
+document.getElementById("searchVoter").addEventListener("keyup", e => {
+    let val = e.target.value.toLowerCase();
+    document.querySelectorAll("#voterTable tbody tr").forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(val) ? "" : "none";
+    });
+});
+</script>
+
+{% endblock %}

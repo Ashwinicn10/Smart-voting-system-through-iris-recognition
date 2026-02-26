@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block content %}
+<h3>Admin Dashboard</h3>
+<div class="row">
+  <div class="col-md-6">
+    <h5>Voters</h5>
+    <table class="table table-sm">
+      <thead><tr><th>#</th><th>Name</th><th>Aadhaar</th><th>Phone</th><th>Verified</th><th>Voted</th></tr></thead>
+      <tbody>
+        {% for v in voters %}
+        <tr><td>{{ v.id }}</td><td>{{ v.name }}</td><td>{{ v.aadhaar }}</td><td>{{ v.phone }}</td><td>{{ 'Yes' if v.verified else 'No' }}</td><td>{{ 'Yes' if v.has_voted else 'No' }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div class="col-md-6">
+    <h5>Candidates</h5>
+    <table class="table table-sm">
+      <thead><tr><th>#</th><th>Name</th><th>Party</th><th>Symbol</th></tr></thead>
+      <tbody>
+        {% for c in candidates %}
+        <tr><td>{{ c.id }}</td><td>{{ c.c_name }}</td><td>{{ c.c_party }}</td><td>{{ c.c_symbol }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
